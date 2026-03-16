@@ -312,7 +312,6 @@ io.on("connection", (socket) => {
   });
 
   // ── PLAY AGAIN ──
-  // Only the initiator starts immediately; others get an invite banner.
   socket.on("play_again", () => {
     if (!currentRoom) return;
     const room = rooms[currentRoom];
@@ -320,11 +319,34 @@ io.on("connection", (socket) => {
     const player = room.players[socket.id];
     if (!player) return;
 
+    if (!room.rounds) room.rounds = {};
+
+    // Kalau sudah ada round aktif (ada player lain yang sudah mulai), gabung ke situ
+    // bukan bikin round baru — supaya semua player dapat kata yang sama
+    const activeRound = room.pendingRound;
+    const otherPlayerInRound = activeRound && Object.values(room.players).some(
+      p => p.id !== socket.id && p.roundId === activeRound.id && p.status === "playing"
+    );
+
+    if (otherPlayerInRound) {
+      // Gabung ke round yang sudah ada
+      player.status      = "playing";
+      player.guesses     = [];
+      player.roundId     = activeRound.id;
+      player.roundAnswer = activeRound.answer;
+
+      const roundPlayers = Object.values(room.players).filter(p => p.roundId === activeRound.id);
+      socket.emit("round_joined", { roundId: activeRound.id, players: roundPlayers });
+      socket.to(currentRoom).emit("player_update", player);
+
+      console.log(`🔄 ${player.name} auto-joined existing round "${activeRound.id}" — answer: ${activeRound.answer}`);
+      return;
+    }
+
+    // Tidak ada round aktif — buat round baru
     const newRoundId = "practice_" + Date.now();
     const newAnswer  = ANSWER_WORDS[Math.floor(Math.random() * ANSWER_WORDS.length)];
 
-    // Simpan di map rounds supaya beberapa round bisa koeksist tanpa overwrite
-    if (!room.rounds) room.rounds = {};
     room.rounds[newRoundId] = { id: newRoundId, answer: newAnswer, startedAt: Date.now() };
     room.pendingRound = room.rounds[newRoundId];
     room.status = "playing";
@@ -332,14 +354,14 @@ io.on("connection", (socket) => {
     player.status      = "playing";
     player.guesses     = [];
     player.roundId     = newRoundId;
-    player.roundAnswer = newAnswer; // answer disimpan langsung di player, anti-overwrite
+    player.roundAnswer = newAnswer;
 
     socket.emit("round_joined", {
       roundId: newRoundId,
       players: Object.values(room.players).filter(p => p.roundId === newRoundId),
     });
 
-    // Hanya kirim invite ke player yang SUDAH selesai, bukan yang lagi aktif main
+    // Kirim invite ke player yang sudah selesai saja
     Object.values(room.players).forEach(p => {
       if (p.id !== socket.id && (p.status === "won" || p.status === "lost")) {
         io.to(p.id).emit("round_invite", {
