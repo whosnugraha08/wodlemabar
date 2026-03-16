@@ -275,7 +275,13 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const result = evaluateGuess(w, room.answer);
+    // Use pendingRound answer if this player is in a new practice round
+    const playerRoundId = player.roundId;
+    const effectiveAnswer =
+      playerRoundId && room.pendingRound && room.pendingRound.id === playerRoundId
+        ? room.pendingRound.answer
+        : room.answer;
+    const result = evaluateGuess(w, effectiveAnswer);
     const guessObj = { word: w, result };
     player.guesses.push(guessObj);
 
@@ -290,7 +296,7 @@ io.on("connection", (socket) => {
       word: w,
       result,
       status: player.status,
-      answer: (won || lost) ? room.answer : null,
+      answer: (won || lost) ? effectiveAnswer : null,
     });
 
     // Broadcast mini-board update to everyone in room
@@ -308,26 +314,54 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ── PLAY AGAIN (host can trigger) ──
+  // ── PLAY AGAIN ──
+  // Only the initiator starts immediately; others get an invite banner.
   socket.on("play_again", () => {
     if (!currentRoom) return;
     const room = rooms[currentRoom];
     if (!room) return;
+    const player = room.players[socket.id];
+    if (!player) return;
 
-    // Reset room with a new random word
-    room.answer = ANSWER_WORDS[Math.floor(Math.random() * ANSWER_WORDS.length)];
+    const newRoundId = "practice_" + Date.now();
+    const newAnswer  = ANSWER_WORDS[Math.floor(Math.random() * ANSWER_WORDS.length)];
+    room.pendingRound = { id: newRoundId, answer: newAnswer, startedAt: Date.now() };
     room.status = "playing";
-    room.dayNumber = null;
-    room.startedAt = Date.now();
 
-    // Reset all player states but keep them in the room
-    Object.values(room.players).forEach((p) => {
-      p.status = "playing";
-      p.guesses = [];
+    player.status  = "playing";
+    player.guesses = [];
+    player.roundId = newRoundId;
+
+    socket.emit("round_joined", {
+      roundId: newRoundId,
+      players: Object.values(room.players).filter(p => p.roundId === newRoundId),
     });
 
-    console.log(`🔄 Room "${currentRoom}" restarted — new answer: ${room.answer}`);
-    io.to(currentRoom).emit("room_reset", roomSnapshot(room));
+    socket.to(currentRoom).emit("round_invite", {
+      roundId: newRoundId,
+      by: { name: player.name, avatar: player.avatar },
+    });
+
+    console.log(`🔄 ${player.name} started new round in room "${currentRoom}" — answer: ${newAnswer}`);
+  });
+
+  // ── JOIN ROUND (accept invite) ──
+  socket.on("join_round", ({ roundId }) => {
+    if (!currentRoom) return;
+    const room = rooms[currentRoom];
+    if (!room || !room.pendingRound || room.pendingRound.id !== roundId) return;
+    const player = room.players[socket.id];
+    if (!player) return;
+
+    player.status  = "playing";
+    player.guesses = [];
+    player.roundId = roundId;
+
+    const roundPlayers = Object.values(room.players).filter(p => p.roundId === roundId);
+    socket.emit("round_joined", { roundId, players: roundPlayers });
+    socket.to(currentRoom).emit("player_update", player);
+
+    console.log(`➕ ${player.name} joined round "${roundId}"`);
   });
 
   // ── DISCONNECT ──
