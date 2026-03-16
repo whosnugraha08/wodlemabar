@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Wordle Friends 🌿</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
@@ -146,7 +146,7 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
 /* KEYBOARD */
 .kbd{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;padding:0 4px 6px}
 .krow{display:flex;gap:4px}
-.key{min-width:34px;height:50px;border-radius:9px;background:var(--cream2);color:var(--text);border:1.5px solid var(--border);font-family:var(--font);font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 3px;transition:background .2s,transform .08s,border .2s;box-shadow:0 2px 5px var(--shadow),0 1px 0 rgba(255,255,255,.8) inset;user-select:none}
+.key{min-width:34px;height:50px;border-radius:9px;background:var(--cream2);color:var(--text);border:1.5px solid var(--border);font-family:var(--font);font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 3px;transition:background .2s,transform .08s,border .2s;box-shadow:0 2px 5px var(--shadow),0 1px 0 rgba(255,255,255,.8) inset;user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .key.wide{min-width:52px;font-size:11px;letter-spacing:.3px}
 .key.correct{background:var(--green);border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(74,155,90,.3)}
 .key.present{background:#d4900a;border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(212,144,10,.3)}
@@ -201,8 +201,95 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
 .btn-decline{padding:8px 12px;background:var(--cream2);border:1.5px solid var(--border);border-radius:10px;font-family:var(--font);font-weight:700;font-size:13px;cursor:pointer;color:var(--dim);transition:all .2s}
 .btn-decline:hover{color:var(--text)}
 
-@media(max-width:480px){.sb{width:148px}.tile{width:46px;height:46px;font-size:20px}.key{min-width:27px;height:44px;font-size:12px}.key.wide{min-width:44px}}
-@media(max-width:360px){.sb{display:none}}
+/* ─── RESPONSIVE ──────────────────────────────── */
+
+/* iOS safe area: keyboard dan invite jangan ketutup home bar */
+.kbd{padding-bottom:max(6px,env(safe-area-inset-bottom))}
+#invite-banner{padding-bottom:max(20px,env(safe-area-inset-bottom))}
+
+/* PC / large (≥769px): center & constrain layout */
+@media(min-width:769px){
+  .body{max-width:900px;margin:0 auto;width:100%}
+  .sb{width:220px}
+  .main{padding:16px 18px 10px;gap:13px}
+  .tile{width:58px;height:58px;font-size:26px}
+  .key{min-width:38px;height:54px;font-size:15px}
+  .key.wide{min-width:58px}
+}
+
+/* Tablet (481–768px) */
+@media(max-width:768px) and (min-width:481px){
+  .sb{width:160px}
+  .tile{width:50px;height:50px;font-size:22px}
+  .key{min-width:30px;height:46px;font-size:13px}
+  .key.wide{min-width:48px}
+}
+
+/* SIDEBAR TOGGLE BUTTON (mobile only) */
+.sb-toggle{display:none;align-items:center;justify-content:center;gap:4px;background:var(--cream2);border:1.5px solid var(--border);border-radius:20px;padding:4px 10px;font-size:14px;cursor:pointer;position:relative;font-family:var(--font);font-weight:800;color:var(--brown);transition:all .15s;box-shadow:0 2px 5px var(--shadow)}
+.sb-toggle:active{transform:scale(.93)}
+.sb-toggle-badge{background:var(--green);color:#fff;border-radius:10px;padding:0 5px;font-size:10px;font-weight:800;margin-left:2px;min-width:16px;text-align:center;line-height:16px;display:inline-block}
+
+/* OVERLAY (mobile sidebar backdrop) */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(44,31,14,.45);z-index:98;backdrop-filter:blur(2px);animation:fadeIn .2s ease}
+
+/* Mobile sidebar drawer */
+/* Mobile portrait (≤480px): sidebar sembunyi, fokus board */
+@media(max-width:480px){
+  .sb{
+    position:fixed;top:0;left:-260px;height:100%;width:240px;z-index:99;
+    border-right:none;border-radius:0 20px 20px 0;
+    box-shadow:4px 0 24px rgba(44,31,14,.18);
+    transition:left .28s cubic-bezier(.22,1,.36,1);
+    padding-top:env(safe-area-inset-top,0px)
+  }
+  .sb.open{left:0}
+  .sb-overlay.open{display:block}
+  .sb-toggle{display:flex}
+  .main{padding:10px 6px 6px;gap:8px}
+  .tile{width:52px;height:52px;font-size:22px}
+  .key{min-width:30px;height:46px;font-size:12px}
+  .key.wide{min-width:47px}
+  .guide{font-size:11px;padding:5px 12px}
+  .outro-box{max-height:95vh}
+}
+
+/* Small mobile (≤380px) */
+@media(max-width:380px){
+  .tile{width:44px;height:44px;font-size:19px}
+  .key{min-width:26px;height:42px;font-size:11px}
+  .key.wide{min-width:42px}
+  .hdr{height:48px}
+  .hdr-logo{font-size:16px}
+  .day-pill,.conn-pill{font-size:10px;padding:2px 8px}
+}
+
+/* Landscape mobile: perkecil vertikal supaya board + keyboard muat */
+@media(max-height:520px) and (orientation:landscape){
+  .hdr{height:42px}
+  .guide{display:none}
+  .main{padding:5px 8px 3px;gap:4px}
+  .board{gap:3px}
+  .brow{gap:3px}
+  .tile{width:38px;height:38px;font-size:16px;border-radius:6px}
+  .kbd{gap:3px;padding:0 4px max(4px,env(safe-area-inset-bottom))}
+  .krow{gap:3px}
+  .key{min-width:28px;height:36px;font-size:11px}
+  .key.wide{min-width:46px;font-size:10px}
+  .sb{width:130px}
+  .end-wait-msg{padding:10px 14px}
+  .ewm-em{font-size:22px;margin-bottom:2px}
+  .ewm-t{font-size:16px}
+  .ewm-waiting{margin-top:4px}
+}
+
+/* Landscape sangat pendek (HP jadul / iPhone SE landscape) */
+@media(max-height:380px) and (orientation:landscape){
+  .sb{display:none}
+  .tile{width:32px;height:32px;font-size:14px;border-radius:5px}
+  .key{min-width:25px;height:32px;font-size:10px}
+  .key.wide{min-width:40px}
+}
 </style>
 </head>
 <body>
@@ -241,8 +328,12 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
       <div class="day-pill" id="day-pill">#1</div>
       <div class="conn-pill ok" id="conn-pill"><div class="conn-dot"></div><span id="conn-label">Live</span></div>
     </div>
-    <div class="hdr-me"><span id="hdr-av">🐱</span><span class="mn" id="hdr-name">Aku</span></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="sb-toggle" id="sb-toggle" onclick="toggleSidebar()" title="Lihat pemain">👥<span id="sb-toggle-count" class="sb-toggle-badge">0</span></button>
+      <div class="hdr-me"><span id="hdr-av">🐱</span><span class="mn" id="hdr-name">Aku</span></div>
+    </div>
   </div>
+  <div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
   <div class="body">
     <div class="sb" id="sidebar">
       <div class="sb-hd">👥 Pemain <span class="sb-count" id="sb-count">0</span></div>
@@ -448,7 +539,28 @@ function buildBoard(){const b=$('board');b.innerHTML='';for(let r=0;r<6;r++){con
 function getTile(r,c){return $(`t${r}${c}`)}
 
 // ─── KEYBOARD ───
-function buildKbd(){const kb=$('kbd');kb.innerHTML='';KROWS.forEach(row=>{const r=document.createElement('div');r.className='krow';row.forEach(k=>{const btn=document.createElement('button');btn.className='key'+(k.length>1?' wide':'');btn.textContent=k;btn.id='k-'+k;btn.addEventListener('click',()=>press(k));r.appendChild(btn)});kb.appendChild(r)})}
+function buildKbd(){
+  const kb=$('kbd');kb.innerHTML='';
+  const isTouchDevice=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+  KROWS.forEach(row=>{
+    const r=document.createElement('div');r.className='krow';
+    row.forEach(k=>{
+      const btn=document.createElement('button');
+      btn.className='key'+(k.length>1?' wide':'');
+      btn.textContent=k;btn.id='k-'+k;
+      if(isTouchDevice){
+        // touchstart = instan, tanpa 300ms delay
+        btn.addEventListener('touchstart',e=>{e.preventDefault();press(k)},{passive:false});
+        // fallback click buat mouse / hybrid device
+        btn.addEventListener('click',e=>{if(!e.isTrusted||e.detail===0)press(k)});
+      } else {
+        btn.addEventListener('click',()=>press(k));
+      }
+      r.appendChild(btn)
+    });
+    kb.appendChild(r)
+  })
+}}
 function updateKbd(){Object.entries(keyStates).forEach(([k,s])=>{const el=$('k-'+k);if(el)el.className='key'+(k.length>1?' wide':'')+' '+s})}
 function disableKbd(){$('kbd').style.opacity='.45';$('kbd').style.pointerEvents='none'}
 
@@ -500,7 +612,7 @@ function renderPlayers(){
     for(let r=0;r<6;r++)for(let c=0;c<5;c++){const cell=document.createElement('div');cell.className='mi';const g=p.guesses?.[r];if(g?.result){const s=g.result[c];if(s==='correct')cell.classList.add('c');else if(s==='present')cell.classList.add('p');else if(s==='absent')cell.classList.add('a')}mb.appendChild(cell)}
   });
 }
-function updateOnlineCount(){const n=Object.keys(players).length;$('sb-count').textContent=n;$('online-count').textContent=n>0?`${n} pemain online`:'Belum ada yang online'}
+function updateOnlineCount(){const n=Object.keys(players).length;$('sb-count').textContent=n;const tb=$('sb-toggle-count');if(tb)tb.textContent=n;$('online-count').textContent=n>0?`${n} pemain online`:'Belum ada yang online'}
 
 // ─── OUTRO ───
 function showOutro(data){
@@ -552,6 +664,17 @@ let toastT=null;
 function toast(msg,type='info',dur=2000){const t=$('toast');t.textContent=msg;t.className=type;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',dur)}
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on')}
 function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// ─── SIDEBAR TOGGLE (mobile) ───
+function toggleSidebar(){
+  const sb=$('sidebar'),ov=$('sb-overlay');
+  const isOpen=sb.classList.contains('open');
+  if(isOpen){closeSidebar()}else{sb.classList.add('open');ov.classList.add('open')}
+}
+function closeSidebar(){
+  $('sidebar').classList.remove('open');
+  $('sb-overlay').classList.remove('open');
+}
 
 // ─── BOOT ───
 initWelcome();

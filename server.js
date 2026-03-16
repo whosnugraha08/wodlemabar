@@ -231,13 +231,21 @@ io.on("connection", (socket) => {
       console.log(`🌅 New day! Room "daily" reset — answer: ${room.answer}`);
     }
 
+    // Kalau ada round aktif yang masih berlangsung, player yang (re)join
+    // harus dapat kata dari round itu, bukan room.answer yang lama
+    const activeRound = room.pendingRound && Object.values(room.players).some(
+      p => p.roundId === room.pendingRound.id && p.status === "playing"
+    ) ? room.pendingRound : null;
+
     room.players[socket.id] = {
       id: socket.id,
       name: name.slice(0, 16),
       avatar,
       status: "playing",
-      guesses: [],      // [{word, result:[]}]
+      guesses: [],
       joinedAt: Date.now(),
+      // Kalau ada round aktif, langsung set roundAnswer supaya tebakan pakai kata yang bener
+      ...(activeRound ? { roundId: activeRound.id, roundAnswer: activeRound.answer } : {}),
     };
 
     socket.join(roomId);
