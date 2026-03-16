@@ -266,7 +266,7 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
   <div class="outro-box">
     <div class="outro-head">
       <div class="outro-title" id="outro-title">🏆 Hasil Ronde!</div>
-      <div class="outro-sub">Kata hari ini:</div>
+      <div class="outro-sub" id="outro-sub">Kata ronde ini:</div>
       <div class="outro-word" id="outro-word">?????</div>
     </div>
     <div class="outro-list" id="outro-list"></div>
@@ -506,6 +506,9 @@ function updateOnlineCount(){const n=Object.keys(players).length;$('sb-count').t
 function showOutro(data){
   const{answer,players:ranked}=data;
   $('outro-word').textContent=answer;
+  // Label dinamis: practice round vs ronde pertama
+  const isPractice=$('day-pill').textContent.includes('Practice');
+  $('outro-sub').textContent=isPractice?'Kata ronde ini:':'Kata ronde ini:';
   const w=ranked.filter(p=>p.status==='won');
   $('outro-title').textContent=w.length===ranked.length?'🎉 Semua Menang!':w.length===0?'🍂 Semua Kalah!':'🏆 Hasil Ronde!';
   const list=$('outro-list');list.innerHTML='';
