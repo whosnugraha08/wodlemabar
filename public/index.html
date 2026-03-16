@@ -93,7 +93,7 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
 .conn-pill.ok .conn-dot{background:var(--green)}.conn-pill.off .conn-dot{background:var(--red)}
 .hdr-me{display:flex;align-items:center;gap:6px;background:var(--yellow-l);border:1.5px solid rgba(212,144,10,.3);border-radius:20px;padding:3px 12px}
 .hdr-me .mn{font-size:13px;font-weight:800;color:var(--brown)}
-.body{flex:1;display:flex;overflow:hidden}
+.body{flex:1;display:flex;overflow:hidden;width:100%}
 
 /* SIDEBAR */
 .sb{width:188px;flex-shrink:0;border-right:2px solid var(--border);padding:12px 9px;overflow-y:auto;background:var(--cream2)}
@@ -155,6 +155,12 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
 
 /* TOAST */
 #toast{position:fixed;top:62px;left:50%;transform:translateX(-50%);padding:9px 22px;border-radius:12px;font-weight:800;font-size:14px;z-index:9999;display:none;box-shadow:0 6px 24px var(--shadow);max-width:290px;text-align:center;white-space:nowrap;animation:slideDown .25s ease;border:2px solid transparent}
+
+/* NOTIF STACK — notif pemain menang/kalah */
+#notif-stack{position:fixed;top:66px;left:50%;transform:translateX(-50%);z-index:9998;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.notif-pill{background:var(--panel);border:2px solid var(--border);border-radius:20px;padding:7px 16px;font-size:13px;font-weight:800;color:var(--text);box-shadow:0 4px 16px var(--shadow);animation:slideDown .3s ease;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.notif-pill.won{background:var(--green-l);border-color:rgba(74,155,90,.5);color:var(--green)}
+.notif-pill.lost{background:#fdf0ee;border-color:rgba(192,57,43,.3);color:var(--red)}
 #toast.err{background:#fdf0ee;color:var(--red);border-color:rgba(192,57,43,.3)}
 #toast.ok{background:var(--green-l);color:var(--green);border-color:rgba(74,155,90,.3)}
 #toast.warn{background:var(--yellow-l);color:var(--yellow);border-color:rgba(212,144,10,.3)}
@@ -209,7 +215,15 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
 
 /* PC / large (≥769px): center & constrain layout */
 @media(min-width:769px){
-  .body{max-width:900px;margin:0 auto;width:100%}
+  /* Bungkus seluruh body dalam container terpusat */
+  #s-game{align-items:center}
+  .hdr{width:100%;align-self:stretch}
+  .body{
+    width:100%;
+    max-width:960px;
+    flex-shrink:0;
+    /* override overflow:hidden agar margin auto bisa bekerja */
+  }
   .sb{width:220px}
   .main{padding:16px 18px 10px;gap:13px}
   .tile{width:58px;height:58px;font-size:26px}
@@ -367,6 +381,7 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
 
 <div id="invite-banner" style="display:none"></div>
 <div id="toast"></div>
+<div id="notif-stack"></div>
 <div id="cfc"></div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -378,7 +393,7 @@ const MEDALS=['🥇','🥈','🥉'];
 
 let myName='',myAvatar='🐱',socket=null;
 let myGuesses=[],keyStates={};
-let curRow=0,curCol=0,gameOver=false;
+let curRow=0,curCol=0,gameOver=false,isAnimating=false;
 let players={};
 let pendingInviteId=null;
 
@@ -453,7 +468,7 @@ function joinGame(){
   myName=$('nin').value.trim().slice(0,16);
   if(!myName||!socket?.connected)return;
   $('hdr-av').textContent=myAvatar;$('hdr-name').textContent=myName;
-  showScreen('s-game');buildBoard();buildKbd();
+  showScreen('s-game');buildBoard();buildKbd();enableKbd();
   socket.emit('join',{name:myName,avatar:myAvatar,roomId:'daily'});
   SFX.join();
 }
@@ -475,7 +490,30 @@ function onPlayerLeft(data){
   renderPlayers();updateOnlineCount();
   if($('outro').classList.contains('on')){const row=$('outro-list').querySelector(`[data-pid="${data.id}"]`);if(row)row.remove()}
 }
-function onPlayerUpdate(p){players[p.id]=p;renderPlayers()}
+function onPlayerUpdate(p){
+  const prev=players[p.id];
+  // Cek perubahan status — kalau baru menang/kalah, tampilkan notif
+  if(prev && prev.status==='playing' && p.id!==socket?.id){
+    if(p.status==='won'){
+      const guessCount=p.guesses?.length||'?';
+      showNotif(`${p.avatar||'🎮'} ${esc(p.name)} menebak dalam ${guessCount} tebakan! 🎉`,'won');
+      SFX.join();
+    } else if(p.status==='lost'){
+      showNotif(`${p.avatar||'🎮'} ${esc(p.name)} gagal menebak 😔`,'lost');
+    }
+  }
+  players[p.id]=p;renderPlayers()
+}
+
+function showNotif(msg,type='info'){
+  const stack=$('notif-stack');
+  const el=document.createElement('div');
+  el.className='notif-pill '+(type||'');
+  el.textContent=msg;
+  stack.appendChild(el);
+  // Auto remove after 3.5s with fade
+  setTimeout(()=>{el.style.transition='opacity .4s';el.style.opacity='0';setTimeout(()=>el.remove(),400)},3000);
+}
 
 function onGuessResult(data){
   const{word,result,status,answer}=data;
@@ -491,6 +529,7 @@ function onGuessResult(data){
     if(status==='won'){winBounce(curRow);setTimeout(()=>{SFX.win();showEndWait(true,answer)},600)}
     else if(status==='lost'){SFX.lose();setTimeout(()=>showEndWait(false,answer),400)}
     curRow++;curCol=0;
+    isAnimating=false;
     gameOver=(status==='won'||status==='lost');
     if(gameOver)disableKbd();
     if(players[socket.id]){players[socket.id].guesses=myGuesses;players[socket.id].status=status||'playing'}
@@ -524,10 +563,10 @@ function hideInvite(){const b=$('invite-banner');b.style.display='none';b.innerH
 function acceptInvite(id){socket.emit('join_round',{roundId:id});hideInvite()}
 
 function onRoundJoined(data){
-  myGuesses=[];keyStates={};curRow=0;curCol=0;gameOver=false;
+  myGuesses=[];keyStates={};curRow=0;curCol=0;gameOver=false;isAnimating=false;
   $('outro').classList.remove('on');hideInvite();
   $('ewm').style.display='none';$('ewm').className='end-wait-msg';
-  buildBoard();buildKbd();
+  buildBoard();buildKbd();enableKbd();
   data.players.forEach(p=>{players[p.id]=p});
   $('day-pill').textContent='🎲 Practice';
   renderPlayers();updateOnlineCount();
@@ -563,6 +602,7 @@ function buildKbd(){
 }
 function updateKbd(){Object.entries(keyStates).forEach(([k,s])=>{const el=$('k-'+k);if(el)el.className='key'+(k.length>1?' wide':'')+' '+s})}
 function disableKbd(){$('kbd').style.opacity='.45';$('kbd').style.pointerEvents='none'}
+function enableKbd(){$('kbd').style.opacity='';$('kbd').style.pointerEvents=''}
 
 // ─── INPUT ───
 document.addEventListener('keydown',e=>{
@@ -574,9 +614,9 @@ document.addEventListener('keydown',e=>{
   else if(/^[a-zA-Z]$/.test(k))press(k.toUpperCase());
 });
 function press(k){
-  if(gameOver)return;
+  if(gameOver||isAnimating)return;
   if(k==='⌫'){if(curCol>0){curCol--;const t=getTile(curRow,curCol);t.textContent='';t.className='tile';SFX.del()}}
-  else if(k==='ENTER'){if(curCol<5){shake();SFX.bad();toast('Kurang 5 huruf! 🌿','warn');return}socket.emit('guess',{word:getTyped()})}
+  else if(k==='ENTER'){if(curCol<5){shake();SFX.bad();toast('Kurang 5 huruf! 🌿','warn');return}isAnimating=true;socket.emit('guess',{word:getTyped()})}
   else if(/^[A-Z]$/.test(k)){if(curCol<5){const t=getTile(curRow,curCol);t.textContent=k;t.className='tile filled';curCol++;SFX.key()}}
 }
 function getTyped(){let w='';for(let c=0;c<5;c++)w+=getTile(curRow,c).textContent;return w}
