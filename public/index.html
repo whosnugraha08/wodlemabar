@@ -560,7 +560,7 @@ function buildKbd(){
     });
     kb.appendChild(r)
   })
-}}
+}
 function updateKbd(){Object.entries(keyStates).forEach(([k,s])=>{const el=$('k-'+k);if(el)el.className='key'+(k.length>1?' wide':'')+' '+s})}
 function disableKbd(){$('kbd').style.opacity='.45';$('kbd').style.pointerEvents='none'}
 
