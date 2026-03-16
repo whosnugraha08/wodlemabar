@@ -207,6 +207,23 @@ app.get("/api/state", (req, res) => {
 });
 
 // ═══════════════════════════════════════
+//   ADMIN: broadcast update notification
+//   Panggil: GET /admin/notify-update?secret=YOUR_SECRET&msg=Pesan+opsional
+// ═══════════════════════════════════════
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "wordle-admin-2024";
+
+app.get("/admin/notify-update", (req, res) => {
+  if (req.query.secret !== ADMIN_SECRET) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  const msg = req.query.msg || "Ada update baru! Silakan refresh untuk melanjutkan. 🌿";
+  const countdown = parseInt(req.query.countdown) || 30; // detik sebelum auto-refresh
+  io.emit("server_update", { msg, countdown });
+  console.log(`📢 Update notification broadcasted: "${msg}"`);
+  res.json({ ok: true, msg, players: io.engine.clientsCount });
+});
+
+// ═══════════════════════════════════════
 //   SOCKET.IO
 // ═══════════════════════════════════════
 io.on("connection", (socket) => {

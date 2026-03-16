@@ -166,6 +166,17 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
 #toast.warn{background:var(--yellow-l);color:var(--yellow);border-color:rgba(212,144,10,.3)}
 #toast.info{background:var(--cream2);color:var(--brown);border-color:var(--border)}
 
+/* UPDATE BANNER */
+#update-banner{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(44,31,14,.65);backdrop-filter:blur(6px)}
+#update-banner.on{display:flex}
+.update-box{background:var(--panel);border:2px solid var(--border);border-radius:24px;padding:28px 28px 22px;text-align:center;max-width:340px;width:90%;box-shadow:0 12px 48px var(--shadow);animation:scaleIn .35s cubic-bezier(.22,1,.36,1)}
+.update-em{font-size:44px;margin-bottom:10px}
+.update-title{font-family:var(--kalam);font-size:24px;color:var(--brown);margin-bottom:8px}
+.update-msg{font-size:14px;color:var(--dim);font-weight:700;margin-bottom:18px;line-height:1.5}
+.update-countdown{font-size:13px;color:var(--yellow);font-weight:800;margin-bottom:14px}
+.btn-refresh{width:100%;padding:13px;background:linear-gradient(135deg,var(--green),#2d7a40);color:#fff;border:none;border-radius:14px;font-family:var(--font);font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 5px 20px rgba(74,155,90,.4)}
+.btn-refresh:hover{transform:translateY(-2px)}
+
 /* CONFETTI (win only, lightweight) */
 #cfc{position:fixed;inset:0;pointer-events:none;z-index:9000;overflow:hidden}
 .cf{position:absolute;top:-20px;animation:fall linear both;opacity:.9}
@@ -380,6 +391,15 @@ html,body{height:100%;background:var(--sky);color:var(--text);font-family:var(--
 </div>
 
 <div id="invite-banner" style="display:none"></div>
+<div id="update-banner">
+  <div class="update-box">
+    <div class="update-em">🌿</div>
+    <div class="update-title">Ada Update Nih!</div>
+    <div class="update-msg" id="update-msg">Ada update baru! Silakan refresh untuk melanjutkan.</div>
+    <div class="update-countdown" id="update-countdown"></div>
+    <button class="btn-refresh" onclick="location.reload()">🔄 Refresh Sekarang</button>
+  </div>
+</div>
 <div id="toast"></div>
 <div id="notif-stack"></div>
 <div id="cfc"></div>
@@ -448,6 +468,7 @@ function connectSocket(){
   socket.on('room_finished',onRoomFinished);
   socket.on('round_invite',onRoundInvite);
   socket.on('round_joined',onRoundJoined);
+  socket.on('server_update',onServerUpdate);
 }
 function setConn(ok){const p=$('conn-pill');if(!p)return;p.className='conn-pill '+(ok?'ok':'off');$('conn-label').textContent=ok?'Live':'Offline'}
 
@@ -704,6 +725,22 @@ let toastT=null;
 function toast(msg,type='info',dur=2000){const t=$('toast');t.textContent=msg;t.className=type;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',dur)}
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on')}
 function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// ─── SERVER UPDATE NOTIFICATION ───
+let updateTimer=null;
+function onServerUpdate(data){
+  const{msg,countdown}=data;
+  $('update-msg').textContent=msg;
+  $('update-banner').classList.add('on');
+  SFX.invite();
+  let secs=countdown||30;
+  function tick(){
+    $('update-countdown').textContent=`Auto refresh dalam ${secs} detik...`;
+    if(secs<=0){location.reload();return}
+    secs--;updateTimer=setTimeout(tick,1000);
+  }
+  tick();
+}
 
 // ─── SIDEBAR TOGGLE (mobile) ───
 function toggleSidebar(){
