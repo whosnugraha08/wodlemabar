@@ -276,12 +276,8 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Use pendingRound answer if this player is in a new practice round
-    const playerRoundId = player.roundId;
-    const effectiveAnswer =
-      playerRoundId && room.pendingRound && room.pendingRound.id === playerRoundId
-        ? room.pendingRound.answer
-        : room.answer;
+    // Pakai answer yang tersimpan langsung di player (anti-overwrite bug)
+    const effectiveAnswer = player.roundAnswer || room.answer;
     const result = evaluateGuess(w, effectiveAnswer);
     const guessObj = { word: w, result };
     player.guesses.push(guessObj);
@@ -326,21 +322,31 @@ io.on("connection", (socket) => {
 
     const newRoundId = "practice_" + Date.now();
     const newAnswer  = ANSWER_WORDS[Math.floor(Math.random() * ANSWER_WORDS.length)];
-    room.pendingRound = { id: newRoundId, answer: newAnswer, startedAt: Date.now() };
+
+    // Simpan di map rounds supaya beberapa round bisa koeksist tanpa overwrite
+    if (!room.rounds) room.rounds = {};
+    room.rounds[newRoundId] = { id: newRoundId, answer: newAnswer, startedAt: Date.now() };
+    room.pendingRound = room.rounds[newRoundId];
     room.status = "playing";
 
-    player.status  = "playing";
-    player.guesses = [];
-    player.roundId = newRoundId;
+    player.status      = "playing";
+    player.guesses     = [];
+    player.roundId     = newRoundId;
+    player.roundAnswer = newAnswer; // answer disimpan langsung di player, anti-overwrite
 
     socket.emit("round_joined", {
       roundId: newRoundId,
       players: Object.values(room.players).filter(p => p.roundId === newRoundId),
     });
 
-    socket.to(currentRoom).emit("round_invite", {
-      roundId: newRoundId,
-      by: { name: player.name, avatar: player.avatar },
+    // Hanya kirim invite ke player yang SUDAH selesai, bukan yang lagi aktif main
+    Object.values(room.players).forEach(p => {
+      if (p.id !== socket.id && (p.status === "won" || p.status === "lost")) {
+        io.to(p.id).emit("round_invite", {
+          roundId: newRoundId,
+          by: { name: player.name, avatar: player.avatar },
+        });
+      }
     });
 
     console.log(`🔄 ${player.name} started new round in room "${currentRoom}" — answer: ${newAnswer}`);
@@ -350,19 +356,25 @@ io.on("connection", (socket) => {
   socket.on("join_round", ({ roundId }) => {
     if (!currentRoom) return;
     const room = rooms[currentRoom];
-    if (!room || !room.pendingRound || room.pendingRound.id !== roundId) return;
+    if (!room) return;
     const player = room.players[socket.id];
     if (!player) return;
 
-    player.status  = "playing";
-    player.guesses = [];
-    player.roundId = roundId;
+    // Cari round dari map rounds, fallback ke pendingRound
+    const round = (room.rounds && room.rounds[roundId])
+      || (room.pendingRound && room.pendingRound.id === roundId ? room.pendingRound : null);
+    if (!round) return;
+
+    player.status      = "playing";
+    player.guesses     = [];
+    player.roundId     = roundId;
+    player.roundAnswer = round.answer; // answer disimpan langsung di player
 
     const roundPlayers = Object.values(room.players).filter(p => p.roundId === roundId);
     socket.emit("round_joined", { roundId, players: roundPlayers });
     socket.to(currentRoom).emit("player_update", player);
 
-    console.log(`➕ ${player.name} joined round "${roundId}"`);
+    console.log(`➕ ${player.name} joined round "${roundId}" — answer: ${round.answer}`);
   });
 
   // ── DISCONNECT ──
