@@ -536,7 +536,7 @@ function onGuessResult(data){
     renderPlayers();
   },5*100+300);
 }
-function onGuessError(data){shake();SFX.bad();toast(data.message||'Kata gak valid!','warn',2500)}
+function onGuessError(data){isAnimating=false;shake();SFX.bad();toast(data.message||'Kata gak valid!','warn',2500)}
 function onRoomFinished(data){
   if($('outro').classList.contains('on'))showOutro(data);
   else{const d=gameOver?1600:300;setTimeout(()=>showOutro(data),d)}
